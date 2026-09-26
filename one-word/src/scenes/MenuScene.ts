@@ -24,9 +24,9 @@ export class MenuScene extends Phaser.Scene {
     });
     this.add.text(W / 2, H * 0.28 + 72, 'Change one word.\nChange the world.', { fontFamily: FONT, fontSize: '20px', color: '#8a85a0', align: 'center', lineSpacing: 6 }).setOrigin(0.5);
 
-    this.button(W / 2, H * 0.62, 'PLAY', true, () => this.start(0));
-    this.button(W / 2, H * 0.62 + 62, 'HOW TO PLAY', false, () => this.howTo());
-    this.button(W / 2, H * 0.62 + 118, 'MAKE A LEVEL', false, () => { window.location.href = './editor.html'; });
+    this.button(W / 2, H * 0.52, 'PLAY', true, () => this.start(0));
+    this.button(W / 2, H * 0.52 + 56, 'HOW TO PLAY', false, () => this.howTo());
+    this.button(W / 2, H * 0.52 + 112, 'MAKE A LEVEL', false, () => { window.location.href = './editor.html'; });
 
     // Level select (handy for demos).
     const lx = W / 2 - ((LEVELS.length - 1) * 44) / 2;
