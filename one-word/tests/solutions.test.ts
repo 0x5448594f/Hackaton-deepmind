@@ -4,7 +4,7 @@
 //
 //   npm test
 
-import { LEVELS } from '../src/levels/levels';
+import { loadLevels } from './loadLevels';
 import { withReplacement } from '../src/rules/RuleParser';
 import { World } from '../src/systems/World';
 import { DIRS } from '../src/systems/Pathfinding';
@@ -36,7 +36,7 @@ export function solve(world: World, maxStates = 200_000): number | null {
 }
 
 let failed = false;
-for (const level of LEVELS) {
+for (const level of await loadLevels()) {
   const editable = level.rules.find((r) => r.editablePart)!;
   const found: string[] = [];
   const lines: string[] = [];

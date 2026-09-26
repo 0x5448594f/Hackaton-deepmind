@@ -45,10 +45,24 @@ The game is fully playable without AI.
 
 `npm test` checks this table against every allowed word by exhaustive search.
 
+### Add your own
+
+One file = one level, in `src/levels/definitions/`, named `NN-slug.ts`. Drop a new file in and it
+appears in the game and in the test run — there is no list to register it in:
+
+```bash
+cp src/levels/definitions/01-red.ts src/levels/definitions/06-my-level.ts
+npm run dev
+npm test
+```
+
+See `src/levels/definitions/README.md` for the level format, the map legend and the rule vocabulary.
+
 ## Structure
 
 - `src/systems/World.ts`: deterministic turn-based simulation (no Phaser), rules → behavior
 - `src/rules/`: rule types, sentence rendering, interpreters, `RuleManager`
-- `src/levels/levels.ts`: ASCII level maps
+- `src/levels/definitions/`: one file per level (auto-discovered, ordered by file number)
+- `src/levels/levels.ts`: level discovery; `defineLevel.ts` / `registry.ts`: level format and loading
 - `src/scenes/`: Phaser menu + game rendering
 - `src/ui/`: DOM rule editor, level-complete card, sound
