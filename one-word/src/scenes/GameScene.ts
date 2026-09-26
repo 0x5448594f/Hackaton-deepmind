@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { COLORS, DEBUG_MODE, OPENAI_MODEL, TILE, openAIKey } from '../config/GameConfig';
+import { COLORS, DEBUG_MODE, GEMINI_MODEL, TILE, geminiKey } from '../config/GameConfig';
 import { LEVELS } from '../levels/levels';
 import { T, type LevelData, type Pos } from '../levels/LevelData';
 import type { Mechanic } from '../rules/RuleDefinition';
@@ -89,8 +89,8 @@ export class GameScene extends Phaser.Scene {
     complete.hide();
     editor.close();
 
-    const key = openAIKey();
-    this.rules = new RuleManager(this.level.rules, key ? new LLMWordInterpreter(key, OPENAI_MODEL) : null);
+    const key = geminiKey();
+    this.rules = new RuleManager(this.level.rules, key ? new LLMWordInterpreter(key, GEMINI_MODEL) : null);
     this.world = new World(this.level, this.rules.rules);
 
     const { width: W, height: H } = this.scale;
