@@ -44,8 +44,11 @@ The game is fully playable without AI.
 | 3 | GUARD **CHASES** YOU (+ plate & door) | HELP, FOLLOW |
 | 4 | GUARD CHASES **YOU** | KEY |
 | 5 | GUARD **CHASES** YOU · YOU DIE ON RED | HELP, FLEE, FOLLOW |
+| 6 | YOU **DIE** ON RED · GUARD **CHASES** YOU | HIDE + HELP, HEAL + HELP, BOUNCE + HELP |
 
-`npm test` checks this table against every allowed word by exhaustive search.
+A level may have several editable words (level 6 has two): each one is clicked and rewritten on
+its own, and a solution is the combination. `npm test` checks this table against every allowed
+word — every combination of them — by exhaustive search.
 
 ### Add your own
 
@@ -53,8 +56,8 @@ One file = one level, in `src/levels/definitions/`, named `NN-slug.ts`. Drop a n
 appears in the game and in the test run — there is no list to register it in.
 
 **With the editor (easiest):** `npm run dev`, then **MAKE A LEVEL** on the title screen (or
-<http://localhost:5173/editor.html>). Paint the map, pick the rule and the one word players may
-change, hit **TEST LEVEL** (it brute-forces every allowed word and fills in `solutions`), then
+<http://localhost:5173/editor.html>). Paint the map, tick the words players may change (one or
+several), hit **TEST LEVEL** (it brute-forces every combination and fills in `solutions`), then
 **SAVE TO definitions/** — the dev server writes the file and the game reloads with your level.
 On a deployed static build the same button downloads the `.ts` file to drop into the folder (and
 send as a pull request).
@@ -62,7 +65,7 @@ send as a pull request).
 **By hand:**
 
 ```bash
-cp src/levels/definitions/01-red.ts src/levels/definitions/06-my-level.ts
+cp src/levels/definitions/01-red.ts src/levels/definitions/07-my-level.ts
 npm run dev
 npm test
 ```
