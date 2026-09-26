@@ -26,6 +26,28 @@ function nextFreeRank(): number {
   return LEVELS.reduce((max, level) => Math.max(max, level.id), 0) + 1;
 }
 
+// Writing a level file makes Vite reload this page (the new file changes the
+// level glob), so the work in progress is parked here and picked back up.
+const DRAFT_KEY = 'oneword_editor_draft';
+
+interface Draft {
+  name: string;
+  rank: number;
+  cells: string[][];
+  rules: RuleDefinition[];
+  solutions: string[] | null;
+  saved?: { path: string; rank: number };
+}
+
+function readDraft(): Draft | null {
+  try {
+    const raw = sessionStorage.getItem(DRAFT_KEY);
+    return raw ? (JSON.parse(raw) as Draft) : null;
+  } catch {
+    return null;
+  }
+}
+
 /** Words a given rule part may be replaced with. */
 function vocabulary(part: RulePart): readonly string[] {
   return part === 'verb' ? MECHANICS : part === 'condition' ? CONDITIONS : NOUNS;
@@ -51,11 +73,20 @@ export class LevelEditor {
   private readonly statusLine = el('div', { className: 'status' });
 
   constructor(private readonly root: HTMLElement) {
+    const draft = readDraft();
+    if (draft) {
+      this.name = draft.name;
+      this.rank = draft.rank;
+      this.cells = draft.cells;
+      this.rules = draft.rules;
+      this.solutions = draft.solutions;
+    }
     this.build();
     this.renderPalette();
     this.renderGrid();
     this.renderRules();
     this.renderSource();
+    if (draft?.saved) this.announceSaved(draft.saved.path, draft.saved.rank);
     document.addEventListener('mouseup', () => { this.painting = false; });
   }
 
@@ -322,6 +353,22 @@ export class LevelEditor {
     this.sourcePane.textContent = levelFileSource(this.definition());
     const name = levelFileName(this.rank, this.name);
     this.sourcePane.setAttribute('data-file', `src/levels/definitions/${name}`);
+    this.storeDraft();
+  }
+
+  private storeDraft(saved?: { path: string; rank: number }) {
+    const draft: Draft = {
+      name: this.name, rank: this.rank, cells: this.cells, rules: this.rules, solutions: this.solutions, saved,
+    };
+    try {
+      sessionStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+    } catch { /* storage blocked */ }
+  }
+
+  private announceSaved(path: string, rank: number) {
+    this.setStatus(`Wrote ${path} — it is now level ${rank}.`, 'ok');
+    const play = el('a', { href: './index.html', textContent: `PLAY LEVEL ${rank} →` });
+    this.statusLine.append(' ', play);
   }
 
   private setStatus(text: string, kind: 'ok' | 'bad' | 'busy' = 'busy') {
@@ -380,6 +427,9 @@ export class LevelEditor {
     }
 
     const write = async (overwrite: boolean) => {
+      // Writing the file makes Vite reload this page, often before the response
+      // lands here, so the success message is parked first and undone on failure.
+      this.storeDraft({ path: `src/levels/definitions/${fileName}`, rank: this.rank });
       const res = await fetch(SAVE_ENDPOINT, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -392,11 +442,13 @@ export class LevelEditor {
       let result = await write(false);
       if (result.status === 409 && window.confirm(`${fileName} already exists. Overwrite it?`)) result = await write(true);
       if (!result.ok) {
+        this.storeDraft();
         this.setStatus(result.body.error ?? 'could not write the file', 'bad');
         return;
       }
-      this.setStatus(`Wrote ${result.body.path} — it is now level ${this.rank}. Play it: ./index.html`, 'ok');
+      this.announceSaved(result.body.path ?? `src/levels/definitions/${fileName}`, this.rank);
     } catch (err) {
+      this.storeDraft();
       this.setStatus(err instanceof Error ? err.message : String(err), 'bad');
     }
   }

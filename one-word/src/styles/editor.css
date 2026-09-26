@@ -99,6 +99,7 @@ button.ghost.small { font-size: 11px; padding: 4px 8px; }
 button:hover { filter: brightness(1.15); }
 
 .status { margin-top: 10px; min-height: 18px; color: var(--dim); }
+.status a { color: var(--accent); }
 .status.ok { color: var(--good); }
 .status.bad { color: var(--bad); }
 
