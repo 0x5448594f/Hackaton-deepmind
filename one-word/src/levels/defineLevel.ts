@@ -10,10 +10,13 @@ export interface LevelDefinition {
    *   P player G guard   K key   D door
    */
   map: string[];
-  /** All rules of the level; exactly one has an editable word. */
+  /** All rules of the level; at least one has an editable word. */
   rules: RuleDefinition[];
-  /** Replacement tokens that solve the level (verified by `npm test`). */
-  solutions: string[];
+  /**
+   * Replacements that solve the level (verified by `npm test`). With several
+   * editable words, each solution is one token per word: `[['HIDE', 'FLEE']]`.
+   */
+  solutions: (string | string[])[];
   /** Example words shown when the player types something the world doesn't understand. */
   hintWords?: string[];
   tutorial?: boolean;

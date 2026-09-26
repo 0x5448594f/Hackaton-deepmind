@@ -74,7 +74,8 @@ body.editor-page {
 .rule { border: 1px solid var(--line); padding: 10px; margin-bottom: 10px; }
 .rule.editable { border-color: var(--accent); }
 .rule-sentence { font-size: 15px; font-weight: 700; margin-bottom: 8px; }
-.editable-toggle { display: flex; align-items: center; gap: 6px; margin-top: 8px; color: var(--dim); }
+.editable-toggle { display: flex; align-items: center; gap: 6px; color: var(--dim); }
+.editable-toggles { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 4px; }
 
 .chips-block { margin-top: 8px; }
 .hint { font-size: 10px; letter-spacing: 1px; color: var(--dim); margin-bottom: 4px; }

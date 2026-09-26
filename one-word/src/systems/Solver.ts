@@ -1,6 +1,6 @@
 import type { LevelData, Pos } from '../levels/LevelData';
 import type { RuleDefinition } from '../rules/RuleDefinition';
-import { withReplacement } from '../rules/RuleParser';
+import { levelSlots, withReplacement, type LevelSlot } from '../rules/RuleParser';
 import { DIRS } from './Pathfinding';
 import { World } from './World';
 
@@ -34,16 +34,37 @@ export function solve(world: World, maxStates = 200_000): number | null {
 }
 
 export interface WordResult {
-  word: string;
+  /** One word per editable slot of the level, in reading order. */
+  words: string[];
   steps: number | null;
 }
 
-/** Solves the level once per allowed replacement of its editable word. */
+/** How a combination of words is written in level files and test output. */
+export function comboKey(words: string | string[]): string {
+  return (Array.isArray(words) ? words : [words]).join(' + ');
+}
+
+/** Every combination of allowed words, one word per editable slot. */
+export function wordCombos(slots: LevelSlot[], maxCombos = 512): string[][] {
+  const total = slots.reduce((n, s) => n * s.allowedReplacements.length, 1);
+  if (total > maxCombos) {
+    throw new Error(`${total} word combinations is too many to brute-force (max ${maxCombos}) — shorten the allowed word lists`);
+  }
+  return slots.reduce<string[][]>(
+    (combos, slot) => combos.flatMap((combo) => slot.allowedReplacements.map((word) => [...combo, word])),
+    [[]],
+  );
+}
+
+/** Solves the level once per combination of its editable words. */
 export function solveEveryWord(level: LevelData, maxStates?: number): WordResult[] {
-  const editable = level.rules.find((r) => r.editablePart);
-  if (!editable) throw new Error(`level ${level.id} ${level.name} has no editable rule`);
-  return (editable.allowedReplacements ?? []).map((word) => {
-    const rules: RuleDefinition[] = level.rules.map((r) => (r === editable ? withReplacement(r, word) : r));
-    return { word, steps: solve(new World(level, rules), maxStates) };
+  const slots = levelSlots(level.rules);
+  if (!slots.length) throw new Error(`level ${level.id} ${level.name} has no editable word`);
+  return wordCombos(slots).map((words) => {
+    const rules: RuleDefinition[] = level.rules.map((r) => ({ ...r }));
+    slots.forEach((slot, i) => {
+      rules[slot.ruleIndex] = withReplacement(rules[slot.ruleIndex], words[i], slot.part);
+    });
+    return { words, steps: solve(new World(level, rules), maxStates) };
   });
 }

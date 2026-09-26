@@ -2,10 +2,11 @@ import { buildLevel, type LevelDefinition } from '../levels/defineLevel';
 import { LEVELS } from '../levels/levels';
 import { levelFileName, levelFileSource, SAVE_ENDPOINT } from '../levels/serialize';
 import {
-  MECHANICS, NOUNS, type Condition, type Mechanic, type Noun, type RuleDefinition, type RulePart,
+  editableSlots, MECHANICS, NOUNS,
+  type Condition, type EditableSlot, type Mechanic, type Noun, type RuleDefinition, type RulePart,
 } from '../rules/RuleDefinition';
-import { ruleText } from '../rules/RuleParser';
-import { solveEveryWord, type WordResult } from '../systems/Solver';
+import { levelSlots, ruleText } from '../rules/RuleParser';
+import { comboKey, solveEveryWord, type WordResult } from '../systems/Solver';
 import { el, field, select } from './dom';
 import { BRUSHES, BRUSH_BY_CHAR } from './palette';
 
@@ -35,7 +36,7 @@ interface Draft {
   rank: number;
   cells: string[][];
   rules: RuleDefinition[];
-  solutions: string[] | null;
+  solutions: string[][] | null;
   saved?: { path: string; rank: number };
 }
 
@@ -59,9 +60,9 @@ export class LevelEditor {
   private cells: string[][] = STARTER_MAP.map((row) => [...row]);
   private rules: RuleDefinition[] = [{
     subject: 'YOU', verb: 'DIE', condition: 'ON_RED',
-    editablePart: 'verb', allowedReplacements: ['DIE', 'HIDE', 'HEAL', 'BOUNCE'],
+    editableParts: [{ part: 'verb', allowedReplacements: ['DIE', 'HIDE', 'HEAL', 'BOUNCE'] }],
   }];
-  private solutions: string[] | null = null;
+  private solutions: string[][] | null = null;
   private brush = '#';
   private painting = false;
 
@@ -125,7 +126,7 @@ export class LevelEditor {
     this.root.append(
       el('header', { className: 'editor-header' }, [
         el('h1', { textContent: 'LEVEL EDITOR' }),
-        el('p', { textContent: 'Paint a map, pick the one word players may change, test it, and write the level file.' }),
+        el('p', { textContent: 'Paint a map, pick the words players may change, test it, and write the level file.' }),
         el('a', { className: 'ghost-link', href: './index.html', textContent: '← BACK TO GAME' }),
       ]),
       el('div', { className: 'editor-body' }, [
@@ -240,63 +241,65 @@ export class LevelEditor {
     const verb = select(MECHANICS, rule.verb, (v) => { rule.verb = v as Mechanic; update(); });
     const object = select(['', ...NOUNS], rule.object ?? '', (v) => {
       rule.object = v ? (v as Noun) : undefined;
-      if (!v && rule.editablePart === 'object') this.setEditable(index, 'verb');
+      if (!v) this.setEditable(rule, 'object', false);
       update();
     });
     const condition = select(['', ...CONDITIONS], rule.condition ?? '', (v) => {
       rule.condition = v ? (v as Condition) : undefined;
-      if (!v && rule.editablePart === 'condition') this.setEditable(index, 'verb');
+      if (!v) this.setEditable(rule, 'condition', false);
       update();
     });
 
-    const editableToggle = el('input', { type: 'radio', name: 'editable-rule', checked: Boolean(rule.editablePart) });
-    editableToggle.addEventListener('change', () => { this.setEditable(index, 'verb'); update(); });
+    const slots = editableSlots(rule);
+    const available = PARTS.filter((p) => p === 'subject' || p === 'verb' || (p === 'object' && rule.object) || (p === 'condition' && rule.condition));
+    const toggles = available.map((part) => {
+      const box = el('input', { type: 'checkbox', checked: slots.some((s) => s.part === part) });
+      box.addEventListener('change', () => { this.setEditable(rule, part, box.checked); update(); });
+      return el('label', { className: 'editable-toggle' }, [box, el('span', { textContent: part.toUpperCase() })]);
+    });
 
     const children: (Node | string)[] = [
       el('div', { className: 'rule-sentence', textContent: ruleText(rule) }),
       el('div', { className: 'fields' }, [
         field('SUBJECT', subject), field('VERB', verb), field('OBJECT', object), field('CONDITION', condition),
       ]),
-      el('label', { className: 'editable-toggle' }, [editableToggle, el('span', { textContent: 'players change a word in this rule' })]),
+      el('div', { className: 'hint', textContent: 'WORDS PLAYERS MAY CHANGE' }),
+      el('div', { className: 'editable-toggles' }, toggles),
+      ...slots.map((slot) => this.replacementChips(rule, slot)),
     ];
 
-    if (rule.editablePart) {
-      const available = PARTS.filter((p) => p === 'subject' || p === 'verb' || (p === 'object' && rule.object) || (p === 'condition' && rule.condition));
-      children.push(field('EDITABLE WORD', select(available, rule.editablePart, (v) => { this.setEditable(index, v as RulePart); update(); })));
-      children.push(this.replacementChips(rule));
-    } else if (this.rules.length > 1) {
+    if (!slots.length && this.rules.length > 1) {
       const remove = el('button', { className: 'ghost small', textContent: 'REMOVE RULE' });
       remove.addEventListener('click', () => { this.rules.splice(index, 1); update(); });
       children.push(remove);
     }
 
-    return el('div', { className: `rule${rule.editablePart ? ' editable' : ''}` }, children);
+    return el('div', { className: `rule${slots.length ? ' editable' : ''}` }, children);
   }
 
-  private replacementChips(rule: RuleDefinition): HTMLElement {
-    const part = rule.editablePart!;
-    const current = this.currentWord(rule);
-    const chosen = new Set(rule.allowedReplacements ?? []);
-    const chips = vocabulary(part).map((word) => {
+  private replacementChips(rule: RuleDefinition, slot: EditableSlot): HTMLElement {
+    const current = this.currentWord(rule, slot.part);
+    const chosen = new Set(slot.allowedReplacements);
+    const chips = vocabulary(slot.part).map((word) => {
       const on = chosen.has(word);
       const chip = el('button', { className: `chip${on ? ' on' : ''}${word === current ? ' current' : ''}`, textContent: word });
       chip.addEventListener('click', () => {
         if (word === current) return; // the starting word always stays choosable
         if (on) chosen.delete(word); else chosen.add(word);
-        rule.allowedReplacements = [...chosen];
+        slot.allowedReplacements = [...chosen];
         this.invalidate();
         this.renderRules();
       });
       return chip;
     });
     return el('div', { className: 'chips-block' }, [
-      el('div', { className: 'hint', textContent: 'WORDS PLAYERS MAY TYPE' }),
+      el('div', { className: 'hint', textContent: `WORDS FOR "${current}"` }),
       el('div', { className: 'chips' }, chips),
     ]);
   }
 
-  private currentWord(rule: RuleDefinition): string {
-    switch (rule.editablePart) {
+  private currentWord(rule: RuleDefinition, part: RulePart): string {
+    switch (part) {
       case 'subject': return rule.subject;
       case 'object': return rule.object ?? '';
       case 'condition': return rule.condition ?? '';
@@ -304,20 +307,15 @@ export class LevelEditor {
     }
   }
 
-  private setEditable(index: number, part: RulePart) {
-    this.rules.forEach((rule, i) => {
-      if (i === index) {
-        rule.editablePart = part;
-        const current = this.currentWord(rule);
-        const chosen = new Set(rule.allowedReplacements ?? []);
-        if (!vocabulary(part).some((w) => chosen.has(w))) chosen.clear();
-        chosen.add(current);
-        rule.allowedReplacements = [...chosen];
-      } else {
-        delete rule.editablePart;
-        delete rule.allowedReplacements;
-      }
-    });
+  /** Adds or removes one editable word of a rule. */
+  private setEditable(rule: RuleDefinition, part: RulePart, editable: boolean) {
+    const slots = editableSlots(rule).filter((s) => s.part !== part);
+    if (editable) {
+      slots.push({ part, allowedReplacements: [this.currentWord(rule, part)] });
+    }
+    delete rule.editablePart;
+    delete rule.allowedReplacements;
+    rule.editableParts = slots.sort((a, b) => PARTS.indexOf(a.part) - PARTS.indexOf(b.part));
   }
 
   // ---------- level file ----------
@@ -337,9 +335,13 @@ export class LevelEditor {
     const problems: string[] = [];
     if (count('P') !== 1) problems.push('the map needs exactly one player (P)');
     if (count('E') !== 1) problems.push('the map needs exactly one exit (E)');
-    const editable = this.rules.find((r) => r.editablePart);
-    if (!editable) problems.push('one rule must have an editable word');
-    else if ((editable.allowedReplacements ?? []).length < 2) problems.push('pick at least one replacement word besides the starting one');
+    const slots = levelSlots(this.rules);
+    if (!slots.length) problems.push('at least one word must be editable');
+    for (const slot of slots) {
+      if (slot.allowedReplacements.length < 2) {
+        problems.push(`"${this.currentWord(this.rules[slot.ruleIndex], slot.part)}" needs at least one replacement word besides itself`);
+      }
+    }
     return problems;
   }
 
@@ -382,7 +384,7 @@ export class LevelEditor {
       this.setStatus(problems.join(' · '), 'bad');
       return false;
     }
-    this.setStatus('Solving every allowed word…');
+    this.setStatus('Solving every combination of allowed words…');
     let results: WordResult[];
     try {
       results = solveEveryWord(buildLevel({ ...this.definition(), solutions: [] }, this.rank));
@@ -390,28 +392,29 @@ export class LevelEditor {
       this.setStatus(err instanceof Error ? err.message : String(err), 'bad');
       return false;
     }
-    const solvable = results.filter((r) => r.steps !== null).map((r) => r.word);
-    const start = this.currentWord(this.rules.find((r) => r.editablePart)!);
+    const solvable = results.filter((r) => r.steps !== null).map((r) => r.words);
+    const start = comboKey(levelSlots(this.rules).map((s) => this.currentWord(this.rules[s.ruleIndex], s.part)));
     this.solutions = solvable;
     this.renderSource();
     this.renderResults(results, start);
-    if (!solvable.length) this.setStatus('No word solves this level yet — nobody could finish it.', 'bad');
-    else if (solvable.includes(start)) this.setStatus(`"${start}" already solves the level, so players never need to change the word.`, 'bad');
-    else this.setStatus(`Solvable with: ${solvable.join(', ')}`, 'ok');
+    if (!solvable.length) this.setStatus('No combination solves this level yet — nobody could finish it.', 'bad');
+    else if (solvable.some((words) => comboKey(words) === start)) {
+      this.setStatus(`"${start}" already solves the level, so players never need to change a word.`, 'bad');
+    } else this.setStatus(`Solvable with: ${solvable.map(comboKey).join(', ')}`, 'ok');
     return true;
   }
 
   private renderResults(results: WordResult[], start: string) {
     this.resultPane.replaceChildren(...results.map((r) => el('div', {
       className: `result ${r.steps === null ? 'unsolved' : 'solved'}`,
-      textContent: `${r.word}${r.word === start ? ' (start)' : ''} — ${r.steps === null ? 'unsolvable' : `solved in ${r.steps} turns`}`,
+      textContent: `${comboKey(r.words)}${comboKey(r.words) === start ? ' (start)' : ''} — ${r.steps === null ? 'unsolvable' : `solved in ${r.steps} turns`}`,
     })));
   }
 
   private async save() {
     if (!this.solutions && !this.verify()) return;
     if (!this.solutions?.length) {
-      this.setStatus('Test the level first: it must be solvable by at least one word.', 'bad');
+      this.setStatus('Test the level first: it must be solvable by at least one combination of words.', 'bad');
       return;
     }
     const fileName = levelFileName(this.rank, this.name);

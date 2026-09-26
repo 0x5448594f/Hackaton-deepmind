@@ -1,3 +1,4 @@
+import { editableSlots } from '../rules/RuleDefinition';
 import type { LevelDefinition } from './defineLevel';
 
 // Turns an edited level back into the source of a `definitions/NN-slug.ts` file.
@@ -39,14 +40,21 @@ export function levelFileSource(def: LevelDefinition): string {
     if (rule.condition) fields.push(`condition: ${quote(rule.condition)}`);
     lines.push('    {');
     lines.push(`      ${fields.join(', ')},`);
-    if (rule.editablePart) {
-      lines.push(`      editablePart: ${quote(rule.editablePart)}, allowedReplacements: ${list(rule.allowedReplacements ?? [])},`);
+    const slots = editableSlots(rule);
+    if (slots.length === 1) {
+      lines.push(`      editablePart: ${quote(slots[0].part)}, allowedReplacements: ${list(slots[0].allowedReplacements)},`);
+    } else if (slots.length > 1) {
+      lines.push('      editableParts: [');
+      for (const slot of slots) {
+        lines.push(`        { part: ${quote(slot.part)}, allowedReplacements: ${list(slot.allowedReplacements)} },`);
+      }
+      lines.push('      ],');
     }
     lines.push('    },');
   }
 
   lines.push('  ],');
-  lines.push(`  solutions: ${list(def.solutions)},`);
+  lines.push(`  solutions: [${def.solutions.map((s) => (Array.isArray(s) ? list(s) : quote(s))).join(', ')}],`);
   if (def.hintWords?.length) lines.push(`  hintWords: ${list(def.hintWords)},`);
   if (def.tutorial) lines.push('  tutorial: true,');
   lines.push('});');

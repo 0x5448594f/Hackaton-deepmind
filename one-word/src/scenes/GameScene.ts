@@ -6,6 +6,7 @@ import type { Mechanic } from '../rules/RuleDefinition';
 import { ruleTokens } from '../rules/RuleParser';
 import { RuleManager } from '../rules/RuleManager';
 import { LLMWordInterpreter } from '../rules/LLMWordInterpreter';
+import { comboKey } from '../systems/Solver';
 import { World, type WorldEvent } from '../systems/World';
 import { RuleEditor } from '../ui/RuleEditor';
 import { LevelCompleteUI } from '../ui/LevelCompleteUI';
@@ -106,7 +107,9 @@ export class GameScene extends Phaser.Scene {
     // Bind DOM UI to this level.
     editor.onSubmit = (raw) => this.submitWord(raw);
     editor.onOpen = () => { if (this.level.tutorial && !session.tutorialDone) editor.setTutorial('type'); };
-    editor.render(this.rules.rules, this.rules.editableIndex);
+    editor.onSelect = (ruleIndex, part) => this.rules.select(ruleIndex, part);
+    editor.resetSelection();
+    editor.render(this.rules.rules, this.rules.slots);
     editor.setTutorial(this.level.tutorial && !session.tutorialDone ? 'click' : null);
     document.getElementById('level-name')!.textContent = `LEVEL ${this.level.id} · ${this.level.name}`;
     (document.getElementById('btn-restart') as HTMLButtonElement).onclick = () => this.restart();
@@ -410,7 +413,7 @@ export class GameScene extends Phaser.Scene {
   private resetWorld(fullReset: boolean) {
     if (fullReset) {
       this.rules.reset();
-      editor.render(this.rules.rules, this.rules.editableIndex);
+      editor.render(this.rules.rules, this.rules.slots);
     }
     this.world = new World(this.level, this.rules.rules);
     this.tweens.killTweensOf(this.player);
@@ -465,7 +468,7 @@ export class GameScene extends Phaser.Scene {
     }
     this.rules.apply(res.token);
     this.world.setRules(this.rules.rules);
-    void editor.playRewrite(this.rules.rules, this.rules.editableIndex);
+    void editor.playRewrite(this.rules.rules, this.rules.slots);
     this.playRewriteFx();
     if (res.source === 'ai') {
       this.aiNote.setText(`AI understood "${raw.trim().toLowerCase()}" as ${res.token}${res.note ? ` — ${res.note}` : ''}`).setAlpha(1);
@@ -502,7 +505,7 @@ export class GameScene extends Phaser.Scene {
   // ---------------- level complete ----------------
 
   private showComplete() {
-    const token = this.rules.currentToken;
+    const token = comboKey(this.rules.currentWords);
     const found = foundFor(this.level.id);
     const isNew = !found.has(token);
     found.add(token);
@@ -511,8 +514,9 @@ export class GameScene extends Phaser.Scene {
     if (!prev || time < prev.time) session.best.set(this.level.id, { time, words: this.wordsTried, deaths: this.deaths, solution: token });
 
     const ruleHtml = this.rules.rules.map((r) => ruleTokens(r).map((t) => (t.editable ? `<span class="hl">${t.text}</span>` : t.text)).join(' ')).join('<br>');
-    const expected = this.level.solutions.includes(token);
-    const unfound = this.level.solutions.filter((s) => !found.has(s));
+    const solutions = this.level.solutions.map(comboKey);
+    const expected = solutions.includes(token);
+    const unfound = solutions.filter((s) => !found.has(s));
     const last = this.levelIndex === LEVELS.length - 1;
     complete.show({
       title: expected ? 'LEVEL COMPLETE' : 'LEVEL COMPLETE?!',
@@ -524,7 +528,7 @@ export class GameScene extends Phaser.Scene {
         ['Deaths', String(this.deaths)],
         ['Solution', expected ? token : `${token} (unexpected!)`],
       ],
-      solutions: this.level.solutions.length > 1 ? { list: this.level.solutions, found } : null,
+      solutions: solutions.length > 1 ? { list: solutions, found } : null,
       nextLabel: last ? 'FINISH →' : 'NEXT LEVEL →',
       replayLabel: unfound.length ? 'TRY ANOTHER WORD' : undefined,
     }, () => {
@@ -544,7 +548,7 @@ export class GameScene extends Phaser.Scene {
     const rows: [string, string][] = LEVELS.map((l) => {
       const f = foundFor(l.id);
       total += l.solutions.length;
-      got += l.solutions.filter((s) => f.has(s)).length;
+      got += l.solutions.filter((s) => f.has(comboKey(s))).length;
       const b = session.best.get(l.id);
       return [`${l.id} ${l.name}`, b ? `${b.solution} · ${fmtTime(b.time)}` : '—'];
     });
