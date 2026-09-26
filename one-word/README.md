@@ -19,19 +19,21 @@ Controls: **WASD / arrows** move · **Space** wait · **Enter / E** edit the wor
 ## How words become mechanics
 
 1. `LocalWordInterpreter`: dictionary + stemming (`protect` → HELP, `sleeping` → SLEEP).
-2. `LLMWordInterpreter` (optional): only for words the dictionary doesn't know. OpenAI structured output is
-   constrained to the level's allowed tokens (or NONE) and re-validated. It never generates code, and any failure
-   falls back to "the world doesn't understand".
+2. `LLMWordInterpreter` (optional): only for words the dictionary doesn't know. Google Gemini's structured output
+   (`responseSchema`) is constrained to the level's allowed tokens (or NONE) and re-validated. It never generates
+   code, and any failure falls back to "the world doesn't understand".
 
 The game is fully playable without AI.
 
-### OpenAI key
+### Gemini key
 
-- **Dev:** put `VITE_OPENAI_API_KEY=...` in `.env.local` (gitignored). It is only read in dev mode and is **not**
-  included in `npm run build` output.
+- **Dev:** `cp .env.example .env.local` and put your [Google AI Studio](https://aistudio.google.com/apikey) key in
+  `VITE_GEMINI_API_KEY`. `.env.local` is gitignored, only read in dev mode, and **not** included in `npm run build`
+  output.
 - **Deployed build:** click "AI interpreter: OFF" on the title screen to paste a key. It stays in that browser's
-  localStorage. (For a public demo, a small proxy server is the safer option.)
-- Model: `VITE_OPENAI_MODEL` (default `gpt-4.1-mini`).
+  localStorage. (For a public demo, a small proxy server is the safer option — a key in the browser is visible to
+  whoever plays.)
+- Model: `VITE_GEMINI_MODEL` (default `gemini-3.8-flash`).
 
 ## Levels
 

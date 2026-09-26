@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { COLORS, OPENAI_MODEL, openAIKey, setOpenAIKey } from '../config/GameConfig';
+import { COLORS, GEMINI_MODEL, geminiKey, setGeminiKey } from '../config/GameConfig';
 import { LEVELS } from '../levels/levels';
 import { session } from '../config/Session';
 
@@ -43,11 +43,11 @@ export class MenuScene extends Phaser.Scene {
     this.add.text(W / 2, H - 94, 'LEVELS', { fontFamily: FONT, fontSize: '11px', color: '#5d5873' }).setOrigin(0.5);
 
     const ai = this.add.text(W - 14, H - 12, '', { fontFamily: FONT, fontSize: '11px', color: '#5d5873' }).setOrigin(1, 1).setInteractive({ useHandCursor: true });
-    const refreshAi = () => ai.setText(openAIKey() ? `AI interpreter: ON (${OPENAI_MODEL})` : 'AI interpreter: OFF · click to add an OpenAI key');
+    const refreshAi = () => ai.setText(geminiKey() ? `AI interpreter: ON (${GEMINI_MODEL})` : 'AI interpreter: OFF · click to add a Gemini key');
     refreshAi();
     ai.on('pointerdown', () => {
-      const k = window.prompt('OpenAI API key (stored only in this browser). Leave empty to turn AI off.', '');
-      if (k !== null) { setOpenAIKey(k.trim()); refreshAi(); }
+      const k = window.prompt('Google AI Studio (Gemini) API key, stored only in this browser. Leave empty to turn AI off.', '');
+      if (k !== null) { setGeminiKey(k.trim()); refreshAi(); }
     });
 
     this.input.keyboard?.on('keydown-ENTER', () => this.start(0));
