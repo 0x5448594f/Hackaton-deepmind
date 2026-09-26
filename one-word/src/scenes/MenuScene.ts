@@ -26,6 +26,7 @@ export class MenuScene extends Phaser.Scene {
 
     this.button(W / 2, H * 0.62, 'PLAY', true, () => this.start(0));
     this.button(W / 2, H * 0.62 + 62, 'HOW TO PLAY', false, () => this.howTo());
+    this.button(W / 2, H * 0.62 + 118, 'MAKE A LEVEL', false, () => { window.location.href = './editor.html'; });
 
     // Level select (handy for demos).
     const lx = W / 2 - ((LEVELS.length - 1) * 44) / 2;

@@ -48,7 +48,16 @@ The game is fully playable without AI.
 ### Add your own
 
 One file = one level, in `src/levels/definitions/`, named `NN-slug.ts`. Drop a new file in and it
-appears in the game and in the test run — there is no list to register it in:
+appears in the game and in the test run — there is no list to register it in.
+
+**With the editor (easiest):** `npm run dev`, then **MAKE A LEVEL** on the title screen (or
+<http://localhost:5173/editor.html>). Paint the map, pick the rule and the one word players may
+change, hit **TEST LEVEL** (it brute-forces every allowed word and fills in `solutions`), then
+**SAVE TO definitions/** — the dev server writes the file and the game reloads with your level.
+On a deployed static build the same button downloads the `.ts` file to drop into the folder (and
+send as a pull request).
+
+**By hand:**
 
 ```bash
 cp src/levels/definitions/01-red.ts src/levels/definitions/06-my-level.ts
@@ -64,5 +73,7 @@ See `src/levels/definitions/README.md` for the level format, the map legend and 
 - `src/rules/`: rule types, sentence rendering, interpreters, `RuleManager`
 - `src/levels/definitions/`: one file per level (auto-discovered, ordered by file number)
 - `src/levels/levels.ts`: level discovery; `defineLevel.ts` / `registry.ts`: level format and loading
+- `src/systems/Solver.ts`: brute-force solver, used by `npm test` and the editor's TEST LEVEL
+- `src/editor/` + `editor.html`: visual level editor; `tools/levelWriterPlugin.ts` writes the file in dev
 - `src/scenes/`: Phaser menu + game rendering
 - `src/ui/`: DOM rule editor, level-complete card, sound

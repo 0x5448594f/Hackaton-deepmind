@@ -1,7 +1,12 @@
 # Make a level
 
-One file = one level. Copy an existing file, rename it to the next free number, edit, done —
-the game and `npm test` pick it up automatically (no list to register it in).
+One file = one level. The game and `npm test` pick up every file here automatically (no list to
+register it in).
+
+The easy way: `npm run dev` → **MAKE A LEVEL** on the title screen. The editor paints the map,
+tests every allowed word for you and writes the file in this folder.
+
+By hand: copy an existing file, rename it to the next free number, edit, done.
 
 ```bash
 cp 01-red.ts 06-my-level.ts
